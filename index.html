@@ -1,12 +1,329 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>wedding</title>
+    <title></title>
+    <style>
+        .workspace {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+        #previewBox {
+            width: 320px;
+            height: 320px;
+            border: 2px solid #000;
+            background: white;
+        }
+        #canvas {
+            border: 1px solid #000;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+        }
+        .direction-buttons {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .button-row {
+            display: flex;
+            gap: 5px;
+        }
+        .direction-buttons button {
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+        .direction-buttons button:hover {
+            background: #e0e0e0;
+        }
+        #directionButtons {
+            margin-top: 36px;
+        }
+    </style>
 </head>
 <body>
-    wedding test
+<div class="container">
+    <input type="file" id="imageInput" accept="image/*">
+    <div>
+        <label for="gridSize">가로/세로 칸 수:</label>
+        <input type="number" id="gridSize" value="10" min="5" max="100">
+    </div>
+    <div class="workspace">
+        <canvas id="canvas"></canvas>
+        <div class="item-box">
+            <div id="previewBox"></div>
+            <div class="direction-buttons" id="directionButtons" style="display: none;">
+                <div class="button-row">
+                    <button id="upBtn">↑</button>
+                </div>
+                <div class="button-row">
+                    <button id="leftBtn">←</button>
+                    <button id="downBtn">↓</button>
+                    <button id="rightBtn">→</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const imageInput = document.getElementById('imageInput');
+    const gridSizeInput = document.getElementById('gridSize');
+
+    let currentImage = null;
+    let cellSize = 0;
+    let selectedX = -1;
+    let selectedY = -1;
+
+    // 6가지 기본 색상 정의
+    const baseColors = {
+        'red': [255, 0, 0],
+        'yellow': [255, 255, 0],
+        'blue': [0, 0, 255],
+        'green': [0, 255, 0],
+        'white': [255, 255, 255],
+        'orange': [255, 165, 0]
+    };
+
+    // RGB 색상 간의 거리 계산
+    function colorDistance(color1, color2) {
+        return Math.sqrt(
+            Math.pow(color1[0] - color2[0], 2) +
+            Math.pow(color1[1] - color2[1], 2) +
+            Math.pow(color1[2] - color2[2], 2)
+        );
+    }
+
+    // 가장 가까운 기본 색상 찾기
+    function findNearestColor(r, g, b) {
+        let minDistance = Infinity;
+        let nearestColor = baseColors.white;
+
+        for (let [name, color] of Object.entries(baseColors)) {
+            const distance = colorDistance([r, g, b], color);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestColor = color;
+            }
+        }
+
+        return nearestColor;
+    }
+
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+                createPixelArt(img);
+                document.getElementById('directionButtons').style.display = 'flex';
+            }
+            img.src = event.target.result;
+        }
+        reader.readAsDataURL(file);
+    });
+
+    gridSizeInput.addEventListener('change', function() {
+        if (currentImage) {
+            createPixelArt(currentImage);
+        }
+    });
+
+    function createPixelArt(img) {
+        const gridSize = parseInt(gridSizeInput.value);
+        const minCellSize = 60;
+        const canvasSize = gridSize * minCellSize;
+
+        canvas.width = canvasSize;
+        canvas.height = canvasSize;
+        cellSize = canvasSize / gridSize;
+        const subCellSize = cellSize / 3;
+
+        const aspectRatio = img.width / img.height;
+        let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+        if (aspectRatio > 1) {
+            drawWidth = canvasSize;
+            drawHeight = canvasSize / aspectRatio;
+            offsetY = (canvasSize - drawHeight) / 2;
+        } else {
+            drawHeight = canvasSize;
+            drawWidth = canvasSize * aspectRatio;
+            offsetX = (canvasSize - drawWidth) / 2;
+        }
+
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvasSize, canvasSize);
+        ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+
+        drawGrid();
+    }
+
+    function drawGrid() {
+        const gridSize = parseInt(gridSizeInput.value);
+        const subCellSize = cellSize / 3;
+
+        for(let y = 0; y < gridSize; y++) {
+            for(let x = 0; x < gridSize; x++) {
+                // 서브셀 그리기
+                for(let sy = 0; sy < 3; sy++) {
+                    for(let sx = 0; sx < 3; sx++) {
+                        const subX = x * cellSize + sx * subCellSize;
+                        const subY = y * cellSize + sy * subCellSize;
+
+                        if (currentImage) {
+                            const sampleX = Math.floor(subX + subCellSize/2);
+                            const sampleY = Math.floor(subY + subCellSize/2);
+                            const pixel = ctx.getImageData(sampleX, sampleY, 1, 1).data;
+                            const nearestColor = findNearestColor(pixel[0], pixel[1], pixel[2]);
+                            ctx.fillStyle = `rgb(${nearestColor[0]},${nearestColor[1]},${nearestColor[2]})`;
+                        } else {
+                            ctx.fillStyle = 'white';
+                        }
+
+                        ctx.fillRect(subX, subY, subCellSize, subCellSize);
+                        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                        ctx.lineWidth = 0.5;
+                        ctx.strokeRect(subX, subY, subCellSize, subCellSize);
+                    }
+                }
+
+                // 메인 셀 경계선
+                if (x === selectedX && y === selectedY) {
+                    ctx.strokeStyle = '#FF0000';
+                    ctx.lineWidth = 2;
+                } else {
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 1;
+                }
+                ctx.strokeRect(
+                    x * cellSize + ctx.lineWidth/2,
+                    y * cellSize + ctx.lineWidth/2,
+                    cellSize - ctx.lineWidth,
+                    cellSize - ctx.lineWidth
+                );
+            }
+        }
+    }
+
+    canvas.addEventListener('click', function(e) {
+        if (!currentImage) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        selectedX = Math.floor(x / cellSize);
+        selectedY = Math.floor(y / cellSize);
+
+        drawGrid();
+        showPreview(selectedX, selectedY);
+    });
+
+    function showPreview(gridX, gridY) {
+        if (!currentImage || gridX < 0 || gridY < 0) {
+            const previewBox = document.getElementById('previewBox');
+            previewBox.innerHTML = '';
+            return;
+        }
+
+        const previewBox = document.getElementById('previewBox');
+        const previewSize = 320;
+        const subSize = previewSize / 3;
+
+        previewBox.innerHTML = '';
+
+        const previewCanvas = document.createElement('canvas');
+        previewCanvas.width = previewSize;
+        previewCanvas.height = previewSize;
+        const pctx = previewCanvas.getContext('2d');
+
+        for(let sy = 0; sy < 3; sy++) {
+            for(let sx = 0; sx < 3; sx++) {
+                const sampleX = Math.floor(gridX * cellSize + sx * (cellSize/3) + cellSize/6);
+                const sampleY = Math.floor(gridY * cellSize + sy * (cellSize/3) + cellSize/6);
+                const pixel = ctx.getImageData(sampleX, sampleY, 1, 1).data;
+                const nearestColor = findNearestColor(pixel[0], pixel[1], pixel[2]);
+                pctx.fillStyle = `rgb(${nearestColor[0]},${nearestColor[1]},${nearestColor[2]})`;
+
+                pctx.fillRect(sx * subSize, sy * subSize, subSize, subSize);
+                pctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                pctx.lineWidth = 1;
+                pctx.strokeRect(sx * subSize, sy * subSize, subSize, subSize);
+            }
+        }
+
+        pctx.strokeStyle = '#000000';
+        pctx.lineWidth = 3;
+        pctx.strokeRect(0, 0, previewSize, previewSize);
+
+        previewBox.appendChild(previewCanvas);
+    }
+
+    function moveSelection(dx, dy) {
+        const gridSize = parseInt(gridSizeInput.value);
+
+        if (selectedX === -1 || selectedY === -1) {
+            selectedX = 0;
+            selectedY = 0;
+            drawGrid();
+            showPreview(selectedX, selectedY);
+            return;
+        }
+
+        const newX = selectedX + dx;
+        const newY = selectedY + dy;
+
+        if (newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize) {
+            selectedX = newX;
+            selectedY = newY;
+            drawGrid();
+            showPreview(selectedX, selectedY);
+        }
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (!currentImage) return;
+
+        switch(e.key) {
+            case 'ArrowUp':
+                e.preventDefault();
+                moveSelection(0, -1);
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                moveSelection(0, 1);
+                break;
+            case 'ArrowLeft':
+                e.preventDefault();
+                moveSelection(-1, 0);
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                moveSelection(1, 0);
+                break;
+        }
+    });
+
+    document.getElementById('upBtn').addEventListener('click', () => moveSelection(0, -1));
+    document.getElementById('downBtn').addEventListener('click', () => moveSelection(0, 1));
+    document.getElementById('leftBtn').addEventListener('click', () => moveSelection(-1, 0));
+    document.getElementById('rightBtn').addEventListener('click', () => moveSelection(1, 0));
+</script>
 </body>
 </html>
