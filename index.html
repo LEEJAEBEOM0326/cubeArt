@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title></title>
+    <title>픽셀 아트 생성기</title>
     <style>
         .workspace {
             display: flex;
@@ -12,11 +12,12 @@
         #previewBox {
             width: 320px;
             height: 320px;
-            border: 2px solid #000;
+            border: 1px solid #000;
             background: white;
         }
         #canvas {
             border: 1px solid #000;
+            cursor: pointer;
         }
         .container {
             display: flex;
@@ -35,6 +36,9 @@
             display: flex;
             gap: 5px;
         }
+        .button-row.bottom {
+            margin-top: 5px;
+        }
         .direction-buttons button {
             width: 40px;
             height: 40px;
@@ -50,11 +54,85 @@
         #directionButtons {
             margin-top: 36px;
         }
+        #imageInput {
+            display: none;
+        }
+        .custom-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .custom-button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .custom-button:active {
+            transform: translateY(0);
+        }
+        .upload-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background: white;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z'/%3E%3C/svg%3E") no-repeat 50% 50%;
+            -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z'/%3E%3C/svg%3E") no-repeat 50% 50%;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .edit-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background: white;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/%3E%3C/svg%3E") no-repeat 50% 50%;
+            -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/%3E%3C/svg%3E") no-repeat 50% 50%;
+        }
+
+        .color-palette {
+            margin-top: 20px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+        }
+
+        .color-item {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            transition: transform 0.2s;
+        }
+
+        .color-item:hover {
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <input type="file" id="imageInput" accept="image/*">
     <div>
         <label for="gridSize">가로/세로 칸 수:</label>
         <input type="number" id="gridSize" value="10" min="5" max="100">
@@ -62,17 +140,38 @@
     <div class="workspace">
         <canvas id="canvas"></canvas>
         <div class="item-box">
-            <div id="previewBox"></div>
+            <div id="previewBox" style="display: none;"></div>
             <div class="direction-buttons" id="directionButtons" style="display: none;">
                 <div class="button-row">
                     <button id="upBtn">↑</button>
                 </div>
-                <div class="button-row">
+                <div class="button-row bottom">
                     <button id="leftBtn">←</button>
                     <button id="downBtn">↓</button>
                     <button id="rightBtn">→</button>
                 </div>
             </div>
+        </div>
+    </div>
+    <div class="button-group">
+        <input type="file" id="imageInput" accept="image/*">
+        <button id="customImageButton" class="custom-button">
+            <i class="upload-icon"></i>
+            이미지 업로드
+        </button>
+        <button id="editModeButton" class="custom-button" style="display: none;">
+            <i class="edit-icon"></i>
+            수정 모드
+        </button>
+    </div>
+    <div id="colorPalette" class="color-palette" style="display: none;">
+        <div class="color-grid">
+            <div class="color-item" data-color="#FF0000"></div>
+            <div class="color-item" data-color="#FFFF00"></div>
+            <div class="color-item" data-color="#0000FF"></div>
+            <div class="color-item" data-color="#00FF00"></div>
+            <div class="color-item" data-color="#FFFFFF"></div>
+            <div class="color-item" data-color="#FFA500"></div>
         </div>
     </div>
 </div>
@@ -87,62 +186,112 @@
     let selectedX = -1;
     let selectedY = -1;
 
-    // 6가지 기본 색상 정의
     const baseColors = {
-        'red': [255, 0, 0],
-        'yellow': [255, 255, 0],
-        'blue': [0, 0, 255],
-        'green': [0, 255, 0],
-        'white': [255, 255, 255],
-        'orange': [255, 165, 0]
+        'red': '#FF0000',
+        'yellow': '#FFFF00',
+        'blue': '#0000FF',
+        'green': '#00FF00',
+        'white': '#FFFFFF',
+        'orange': '#FFA500'
     };
 
-    // RGB 색상 간의 거리 계산
-    function colorDistance(color1, color2) {
+    function rgbToLab(r, g, b) {
+        r = r / 255;
+        g = g / 255;
+        b = b / 255;
+
+        r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+        g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+        b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+
+        let x = (r * 0.4124 + g * 0.3576 + b * 0.1805) * 100;
+        let y = (r * 0.2126 + g * 0.7152 + b * 0.0722) * 100;
+        let z = (r * 0.0193 + g * 0.1192 + b * 0.9505) * 100;
+
+        x = x / 95.047;
+        y = y / 100;
+        z = z / 108.883;
+
+        x = x > 0.008856 ? Math.pow(x, 1/3) : (7.787 * x) + 16/116;
+        y = y > 0.008856 ? Math.pow(y, 1/3) : (7.787 * y) + 16/116;
+        z = z > 0.008856 ? Math.pow(z, 1/3) : (7.787 * z) + 16/116;
+
+        return [
+            (116 * y) - 16,    // L
+            500 * (x - y),     // a
+            200 * (y - z)      // b
+        ];
+    }
+
+    function hexToRgb(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return [r, g, b];
+    }
+
+    function colorDistance(rgb1, rgb2) {
+        const lab1 = rgbToLab(rgb1[0], rgb1[1], rgb1[2]);
+        const lab2 = rgbToLab(rgb2[0], rgb2[1], rgb2[2]);
+
         return Math.sqrt(
-            Math.pow(color1[0] - color2[0], 2) +
-            Math.pow(color1[1] - color2[1], 2) +
-            Math.pow(color1[2] - color2[2], 2)
+            Math.pow(lab1[0] - lab2[0], 2) +
+            Math.pow(lab1[1] - lab2[1], 2) +
+            Math.pow(lab1[2] - lab2[2], 2)
         );
     }
 
-    // 가장 가까운 기본 색상 찾기
-    function findNearestColor(r, g, b) {
-        let minDistance = Infinity;
-        let nearestColor = baseColors.white;
+    function getAverageColor(imageData) {
+        let r = 0, g = 0, b = 0;
+        const pixels = imageData.data.length / 4;
 
-        for (let [name, color] of Object.entries(baseColors)) {
-            const distance = colorDistance([r, g, b], color);
-            if (distance < minDistance) {
-                minDistance = distance;
-                nearestColor = color;
-            }
+        for (let i = 0; i < imageData.data.length; i += 4) {
+            r += imageData.data[i];
+            g += imageData.data[i + 1];
+            b += imageData.data[i + 2];
         }
 
-        return nearestColor;
+        return [
+            Math.round(r / pixels),
+            Math.round(g / pixels),
+            Math.round(b / pixels)
+        ];
     }
 
-    imageInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        const reader = new FileReader();
+    function findNearestColor(r, g, b) {
+        let minDistance = Infinity;
+        let nearestHex = baseColors.white;
 
-        reader.onload = function(event) {
-            const img = new Image();
-            img.onload = function() {
-                currentImage = img;
-                createPixelArt(img);
-                document.getElementById('directionButtons').style.display = 'flex';
+        for (let [name, hex] of Object.entries(baseColors)) {
+            const rgbColor = hexToRgb(hex);
+            const distance = colorDistance([r, g, b], rgbColor);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestHex = hex;
             }
-            img.src = event.target.result;
         }
-        reader.readAsDataURL(file);
-    });
 
-    gridSizeInput.addEventListener('change', function() {
-        if (currentImage) {
-            createPixelArt(currentImage);
-        }
-    });
+        return nearestHex;
+    }
+
+    function initCanvas() {
+        const gridSize = parseInt(gridSizeInput.value);
+        const minCellSize = 60;
+        const canvasSize = gridSize * minCellSize;
+        canvas.width = canvasSize;
+        canvas.height = canvasSize;
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvasSize, canvasSize);
+
+        ctx.fillStyle = '#666666';
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const text = '클릭하여 이미지 선택';
+        ctx.fillText(text, canvasSize/2, canvasSize/2);
+    }
 
     function createPixelArt(img) {
         const gridSize = parseInt(gridSizeInput.value);
@@ -152,24 +301,39 @@
         canvas.width = canvasSize;
         canvas.height = canvasSize;
         cellSize = canvasSize / gridSize;
-        const subCellSize = cellSize / 3;
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
 
         const aspectRatio = img.width / img.height;
         let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+        const padding = canvasSize * 0.02;
 
         if (aspectRatio > 1) {
-            drawWidth = canvasSize;
-            drawHeight = canvasSize / aspectRatio;
+            drawWidth = canvasSize - padding * 2;
+            drawHeight = (canvasSize - padding * 2) / aspectRatio;
+            offsetX = padding;
             offsetY = (canvasSize - drawHeight) / 2;
         } else {
-            drawHeight = canvasSize;
-            drawWidth = canvasSize * aspectRatio;
+            drawHeight = canvasSize - padding * 2;
+            drawWidth = (canvasSize - padding * 2) * aspectRatio;
             offsetX = (canvasSize - drawWidth) / 2;
+            offsetY = padding;
         }
 
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = baseColors.white;
         ctx.fillRect(0, 0, canvasSize, canvasSize);
-        ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = canvasSize * 2;
+        tempCanvas.height = canvasSize * 2;
+
+        tempCtx.imageSmoothingEnabled = true;
+        tempCtx.imageSmoothingQuality = 'high';
+        tempCtx.drawImage(img, offsetX * 2, offsetY * 2, drawWidth * 2, drawHeight * 2);
+
+        ctx.drawImage(tempCanvas, 0, 0, canvasSize * 2, canvasSize * 2, 0, 0, canvasSize, canvasSize);
 
         drawGrid();
     }
@@ -187,30 +351,36 @@
                         const subY = y * cellSize + sy * subCellSize;
 
                         if (currentImage) {
-                            const sampleX = Math.floor(subX + subCellSize/2);
-                            const sampleY = Math.floor(subY + subCellSize/2);
-                            const pixel = ctx.getImageData(sampleX, sampleY, 1, 1).data;
-                            const nearestColor = findNearestColor(pixel[0], pixel[1], pixel[2]);
-                            ctx.fillStyle = `rgb(${nearestColor[0]},${nearestColor[1]},${nearestColor[2]})`;
+                            const imageData = ctx.getImageData(
+                                subX,
+                                subY,
+                                subCellSize,
+                                subCellSize
+                            );
+                            const avgColor = getAverageColor(imageData);
+                            ctx.fillStyle = findNearestColor(avgColor[0], avgColor[1], avgColor[2]);
                         } else {
-                            ctx.fillStyle = 'white';
+                            ctx.fillStyle = baseColors.white;
                         }
 
                         ctx.fillRect(subX, subY, subCellSize, subCellSize);
-                        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
                         ctx.lineWidth = 0.5;
                         ctx.strokeRect(subX, subY, subCellSize, subCellSize);
                     }
                 }
 
-                // 메인 셀 경계선
-                if (x === selectedX && y === selectedY) {
-                    ctx.strokeStyle = '#FF0000';
-                    ctx.lineWidth = 2;
+                // 그리드 테두리 그리기
+                if (!isEditMode && x === selectedX && y === selectedY) {
+                    // 수정 모드가 아니고 선택된 셀일 때만 보라색 테두리
+                    ctx.strokeStyle = '#b700ff';
+                    ctx.lineWidth = 5;
                 } else {
-                    ctx.strokeStyle = '#000000';
+                    // 그 외의 경우 기본 테두리
+                    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
                     ctx.lineWidth = 1;
                 }
+
                 ctx.strokeRect(
                     x * cellSize + ctx.lineWidth/2,
                     y * cellSize + ctx.lineWidth/2,
@@ -220,20 +390,6 @@
             }
         }
     }
-
-    canvas.addEventListener('click', function(e) {
-        if (!currentImage) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        selectedX = Math.floor(x / cellSize);
-        selectedY = Math.floor(y / cellSize);
-
-        drawGrid();
-        showPreview(selectedX, selectedY);
-    });
 
     function showPreview(gridX, gridY) {
         if (!currentImage || gridX < 0 || gridY < 0) {
@@ -245,6 +401,8 @@
         const previewBox = document.getElementById('previewBox');
         const previewSize = 320;
         const subSize = previewSize / 3;
+        const gridSize = parseInt(gridSizeInput.value);
+        const subCellSize = cellSize / 3;
 
         previewBox.innerHTML = '';
 
@@ -255,20 +413,25 @@
 
         for(let sy = 0; sy < 3; sy++) {
             for(let sx = 0; sx < 3; sx++) {
-                const sampleX = Math.floor(gridX * cellSize + sx * (cellSize/3) + cellSize/6);
-                const sampleY = Math.floor(gridY * cellSize + sy * (cellSize/3) + cellSize/6);
-                const pixel = ctx.getImageData(sampleX, sampleY, 1, 1).data;
-                const nearestColor = findNearestColor(pixel[0], pixel[1], pixel[2]);
-                pctx.fillStyle = `rgb(${nearestColor[0]},${nearestColor[1]},${nearestColor[2]})`;
+                const subX = gridX * cellSize + sx * subCellSize;
+                const subY = gridY * cellSize + sy * subCellSize;
+                const imageData = ctx.getImageData(
+                    subX,
+                    subY,
+                    subCellSize,
+                    subCellSize
+                );
+                const avgColor = getAverageColor(imageData);
+                pctx.fillStyle = findNearestColor(avgColor[0], avgColor[1], avgColor[2]);
 
                 pctx.fillRect(sx * subSize, sy * subSize, subSize, subSize);
-                pctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                pctx.strokeStyle = 'rgba(0,0,0,0.1)';
                 pctx.lineWidth = 1;
                 pctx.strokeRect(sx * subSize, sy * subSize, subSize, subSize);
             }
         }
 
-        pctx.strokeStyle = '#000000';
+        pctx.strokeStyle = 'rgba(0,0,0,0.5)';
         pctx.lineWidth = 3;
         pctx.strokeRect(0, 0, previewSize, previewSize);
 
@@ -297,6 +460,76 @@
         }
     }
 
+    initCanvas();
+
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        const button = document.getElementById('customImageButton');
+
+        if (e.target.files.length > 0) {
+            button.style.backgroundColor = '#45a049';
+            button.innerHTML = '<i class="upload-icon"></i>이미지 변경';
+            document.getElementById('editModeButton').style.display = 'block';
+        }
+
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                currentImage = img;
+                createPixelArt(img);
+                document.getElementById('directionButtons').style.display = 'flex';
+                document.getElementById('previewBox').style.display = 'block';
+                canvas.style.cursor = 'default';
+            }
+            img.src = event.target.result;
+        }
+        reader.readAsDataURL(file);
+    });
+
+    gridSizeInput.addEventListener('change', function() {
+        if (currentImage) {
+            createPixelArt(currentImage);
+        } else {
+            initCanvas();
+        }
+    });
+
+    canvas.addEventListener('click', function(e) {
+        if (!currentImage) {
+            imageInput.click();
+            return;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        if (isEditMode && selectedColor) {
+            const gridX = Math.floor(x / cellSize);
+            const gridY = Math.floor(y / cellSize);
+
+            const subX = Math.floor((x % cellSize) / (cellSize / 3));
+            const subY = Math.floor((y % cellSize) / (cellSize / 3));
+
+            const subCellSize = cellSize / 3;
+            const subCellX = gridX * cellSize + subX * subCellSize;
+            const subCellY = gridY * cellSize + subY * subCellSize;
+
+            ctx.fillStyle = selectedColor;
+            ctx.fillRect(subCellX, subCellY, subCellSize, subCellSize);
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(subCellX, subCellY, subCellSize, subCellSize);
+            drawGrid();
+        } else {
+            selectedX = Math.floor(x / cellSize);
+            selectedY = Math.floor(y / cellSize);
+            drawGrid();
+            showPreview(selectedX, selectedY);
+        }
+    });
+
     document.addEventListener('keydown', function(e) {
         if (!currentImage) return;
 
@@ -324,6 +557,59 @@
     document.getElementById('downBtn').addEventListener('click', () => moveSelection(0, 1));
     document.getElementById('leftBtn').addEventListener('click', () => moveSelection(-1, 0));
     document.getElementById('rightBtn').addEventListener('click', () => moveSelection(1, 0));
+
+    document.getElementById('customImageButton').addEventListener('click', function() {
+        document.getElementById('imageInput').click();
+    });
+
+    let isEditMode = false;
+    let selectedColor = null;
+
+    // 수정 모드 토글 함수
+    function toggleEditMode() {
+        isEditMode = !isEditMode;
+        const editButton = document.getElementById('editModeButton');
+        const colorPalette = document.getElementById('colorPalette');
+        const itemBox = document.querySelector('.item-box');
+
+        if (isEditMode) {
+            editButton.style.backgroundColor = '#ff4444';
+            editButton.innerHTML = '<i class="edit-icon"></i>수정 중';
+            colorPalette.style.display = 'block';
+            itemBox.style.display = 'none';
+            // 보라색 테두리를 즉시 지우기 위해 drawGrid 호출
+            drawGrid();
+        } else {
+            editButton.style.backgroundColor = '#4CAF50';
+            editButton.innerHTML = '<i class="edit-icon"></i>수정 모드';
+            colorPalette.style.display = 'none';
+            itemBox.style.display = 'block';
+            // 수정 모드 해제 시 선택된 셀 표시를 위해 drawGrid 호출
+            drawGrid();
+            if (selectedX >= 0 && selectedY >= 0) {
+                showPreview(selectedX, selectedY);
+            }
+        }
+    }
+
+    // 색상 팔레트 초기화
+    function initColorPalette() {
+        const colorItems = document.querySelectorAll('.color-item');
+        colorItems.forEach(item => {
+            const color = item.dataset.color;
+            item.style.backgroundColor = color;
+            item.addEventListener('click', () => {
+                selectedColor = color;
+                colorItems.forEach(i => i.style.border = '1px solid #ccc');
+                item.style.border = '3px solid #000';
+            });
+        });
+    }
+
+    document.getElementById('editModeButton').addEventListener('click', toggleEditMode);
+
+    initColorPalette();
+
 </script>
 </body>
 </html>
